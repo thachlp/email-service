@@ -15,6 +15,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.List;
 import java.util.Properties;
 
@@ -59,12 +60,25 @@ public final class EmailSender {
             for (String imageUrl : imageUrls) {
                 final MimeBodyPart attachmentPart = new MimeBodyPart();
                 final URL url = new URL(imageUrl);
-                final InputStream inputStream = url.openStream();
+                final URLConnection connection = url.openConnection();
+                connection.connect();
+
+                final String contentType = connection.getContentType();
+                final InputStream inputStream = connection.getInputStream();
                 final byte[] imageBytes = IOUtils.toByteArray(inputStream);
-                attachmentPart.setFileName("image_" + imageUrls.indexOf(imageUrl) + ".jpg");
-                attachmentPart.setContent(imageBytes, "image/jpeg");
+                final String fileName = "attachment_" + imageUrls.indexOf(imageUrl) + "." + getFileExtension(contentType);
+                attachmentPart.setFileName(fileName);
+                attachmentPart.setContent(imageBytes, contentType);
+                attachmentPart.setDisposition(jakarta.mail.Part.ATTACHMENT);
                 multipart.addBodyPart(attachmentPart);
             }
         }
+    }
+
+    private static String getFileExtension(String contentType) {
+        if (contentType != null && contentType.startsWith("image/")) {
+            return contentType.substring(6);
+        }
+        return "jpg";
     }
 }
